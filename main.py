@@ -1,44 +1,34 @@
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, File, UploadFile
 from fastapi.responses import FileResponse
-from static_ffmpeg import add_paths
 from pydub import AudioSegment
+from static_ffmpeg import add_paths
 import uuid
 import os
 
+# Makes FFmpeg available on Render
+add_paths()
+
 app = FastAPI()
 
-# Add ffmpeg binary to PATH
-add_paths()
-AudioSegment.converter = "ffmpeg"
 
-
-@app.post("/convert-amr-to-wav/")
+@app.post("/convert")
 async def convert_amr_to_wav(file: UploadFile = File(...)):
-    input_name = f"{uuid.uuid4()}.amr"
-    output_name = f"{uuid.uuid4()}.wav"
+    # Generate unique file names in /tmp
+    input_file = f"/tmp/{uuid.uuid4()}.amr"
+    output_file = f"/tmp/{uuid.uuid4()}.wav"
 
-    with open(input_name, "wb") as f:
+    # Save uploaded AMR file
+    with open(input_file, "wb") as f:
         f.write(await file.read())
 
-    audio = AudioSegment.from_file(input_name, format="amr")
-    audio.export(output_name, format="wav")
+    # Convert using pydub
+    audio = AudioSegment.from_file(input_file, format="amr")
+    audio.export(output_file, format="wav")
 
-    os.remove(input_name)
-
-    return FileResponse(output_name, media_type="audio/wav", filename="converted.wav")
-
-
-@app.post("/convert-amr-to-mp4/")
-async def convert_amr_to_mp4(file: UploadFile = File(...)):
-    input_name = f"{uuid.uuid4()}.amr"
-    output_name = f"{uuid.uuid4()}.mp4"
-
-    with open(input_name, "wb") as f:
-        f.write(await file.read())
-
-    audio = AudioSegment.from_file(input_name, format="amr")
-    audio.export(output_name, format="mp4")
-
-    os.remove(input_name)
-
-    return FileResponse(output_name, media_type="video/mp4", filename="converted.mp4")
+    # Return file as downloadable response
+    return FileResponse(
+        output_file,
+        media_type="audio/wav",
+        filename="output.wav",
+        headers={"Content-Disposition": "attachment; filename=output.wav"}
+    )
