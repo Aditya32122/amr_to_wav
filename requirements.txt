@@ -3,4 +3,4 @@ uvicorn
 python-multipart
 pydub
 static-ffmpeg
-pyaudioop-lts
+audioop-lts
